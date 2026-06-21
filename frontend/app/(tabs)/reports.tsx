@@ -61,21 +61,31 @@ function defaultRange() {
 export default function ReportsScreen() {
   const [range] = useState(defaultRange());
   const [data, setData] = useState<RangeReport | null>(null);
+  const [comparison, setComparison] = useState<Comparison | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<"excel" | "pdf" | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api<RangeReport>("/reports/range", {
-        query: {
-          from_year: range.from.year,
-          from_month: range.from.month,
-          to_year: range.to.year,
-          to_month: range.to.month,
-        },
-      });
-      setData(r);
+      const [rangeData, compData] = await Promise.all([
+        api<RangeReport>("/reports/range", {
+          query: {
+            from_year: range.from.year,
+            from_month: range.from.month,
+            to_year: range.to.year,
+            to_month: range.to.month,
+          },
+        }),
+        api<Comparison>("/reports/comparison", {
+          query: {
+            year: range.to.year,
+            month: range.to.month,
+          },
+        }),
+      ]);
+      setData(rangeData);
+      setComparison(compData);
     } catch (e) {
       console.warn(e);
     } finally {
@@ -112,8 +122,8 @@ export default function ReportsScreen() {
         URL.revokeObjectURL(fileUrl);
       } else {
         // Native: fetch -> save -> share
-        const FileSystem = await import("expo-file-system");
-        const Sharing = await import("expo-sharing");
+        const FileSystem: any = await import("expo-file-system");
+        const Sharing: any = await import("expo-sharing");
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) throw new Error("download failed");
         const blob = await res.blob();

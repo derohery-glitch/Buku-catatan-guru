@@ -87,7 +87,7 @@ export default function TransactionForm({ mode, initial, draftType, draft, draft
       const first = categories.find((c) => c.type === type);
       setCategory(first?.name ?? "");
     }
-  }, [type, categories]);
+  }, [type, categories, category]);
 
   const handleSave = useCallback(async () => {
     setError(null);

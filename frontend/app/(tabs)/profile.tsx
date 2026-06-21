@@ -14,7 +14,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/src/context/AuthContext";
-import { api, API_BASE, getToken } from "@/src/lib/api";
+import { API_BASE, getToken } from "@/src/lib/api";
 import { COLORS, RADII, SPACING } from "@/src/lib/theme";
 
 export default function ProfileScreen() {
@@ -56,8 +56,8 @@ export default function ProfileScreen() {
         a.remove();
         URL.revokeObjectURL(fileUrl);
       } else {
-        const FileSystem = await import("expo-file-system");
-        const Sharing = await import("expo-sharing");
+        const FileSystem: any = await import("expo-file-system");
+        const Sharing: any = await import("expo-sharing");
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) throw new Error("failed");
         const text = await res.text();

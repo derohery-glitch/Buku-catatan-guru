@@ -22,14 +22,14 @@ export function useVoiceRecorder() {
   const webStreamRef = useRef<MediaStream | null>(null);
   const webMimeRef = useRef<string>("audio/webm");
 
-  const stopTimer = () => {
+  const stopTimer = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-  };
+  }, []);
 
-  const tickTimer = () => {
+  const tickTimer = useCallback(() => {
     intervalRef.current = setInterval(() => {
       const elapsed = Date.now() - startedAtRef.current;
       setDurationMs(elapsed);
@@ -38,7 +38,7 @@ export function useVoiceRecorder() {
         stop();
       }
     }, 200);
-  };
+  }, [stopTimer]);
 
   const start = useCallback(async () => {
     setError(null);
@@ -50,11 +50,19 @@ export function useVoiceRecorder() {
         }
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         webStreamRef.current = stream;
-        const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-          ? "audio/webm;codecs=opus"
-          : "audio/webm";
-        webMimeRef.current = mime.split(";")[0];
-        const rec = new MediaRecorder(stream, { mimeType: mime });
+        
+        let supportedMime = "";
+        const mimeTypes = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/aac"];
+        for (const t of mimeTypes) {
+          if (MediaRecorder.isTypeSupported(t)) {
+            supportedMime = t;
+            break;
+          }
+        }
+        
+        webMimeRef.current = supportedMime ? supportedMime.split(";")[0] : "audio/mp4";
+        const options = supportedMime ? { mimeType: supportedMime } : undefined;
+        const rec = new MediaRecorder(stream, options);
         webChunksRef.current = [];
         rec.ondataavailable = (e) => {
           if (e.data && e.data.size > 0) webChunksRef.current.push(e.data);
@@ -69,7 +77,7 @@ export function useVoiceRecorder() {
       }
     } else {
       try {
-        const ExpoAudio = await import("expo-audio");
+        const ExpoAudio: any = await import("expo-audio");
         // Request permission
         const perm = await ExpoAudio.requestRecordingPermissionsAsync();
         if (!perm.granted) {
@@ -89,11 +97,11 @@ export function useVoiceRecorder() {
         startedAtRef.current = Date.now();
         setIsRecording(true);
         tickTimer();
-      } catch (e: any) {
-        setError(e?.message ?? "Tidak bisa merekam");
+      } catch (err: any) {
+        setError(err?.message ?? "Tidak bisa merekam");
       }
     }
-  }, []);
+  }, [tickTimer]);
 
   const stop = useCallback(async (): Promise<RecordingResult | null> => {
     stopTimer();
@@ -119,27 +127,27 @@ export function useVoiceRecorder() {
         };
         rec.stop();
       });
-    } else {
-      try {
-        const ExpoAudio = await import("expo-audio");
-        const recorder = mobileRecorderRef.current;
-        if (!recorder) return null;
-        await recorder.stop();
-        const uri: string | null = recorder.uri ?? null;
-        mobileRecorderRef.current = null;
-        if (!uri) return null;
-        // read file as base64
-        const FileSystem = await import("expo-file-system");
-        const b64 = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        return { base64: b64, mime: "audio/m4a", durationMs: elapsed };
-      } catch (e) {
-        console.warn("stop error", e);
-        return null;
+      } else {
+        try {
+          const ExpoAudio: any = await import("expo-audio");
+          const recorder = mobileRecorderRef.current;
+          if (!recorder) return null;
+          await recorder.stop();
+          const uri: string | null = recorder.uri ?? null;
+          mobileRecorderRef.current = null;
+          if (!uri) return null;
+          // read file as base64
+          const FileSystem: any = await import("expo-file-system");
+          const b64 = await FileSystem.readAsStringAsync(uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          return { base64: b64, mime: "audio/m4a", durationMs: elapsed };
+        } catch (err) {
+          console.warn("stop error", err);
+          return null;
+        }
       }
-    }
-  }, []);
+  }, [stopTimer]);
 
   const cancel = useCallback(async () => {
     stopTimer();
