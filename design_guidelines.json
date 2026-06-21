@@ -1,0 +1,118 @@
+{
+  "project_info": {
+    "name": "Catatan Keuangan Asatidz",
+    "domain": "Finance / Productivity",
+    "theme": "Light",
+    "archetype": "Archetype 1: Organic & Earthy",
+    "target_audience": "Islamic boarding school teachers (Ustadz/Ustadzah), non-tech-savvy, preferring Bahasa Indonesia."
+  },
+  "design_philosophy": {
+    "mood": "Calm, trustworthy, respectful, professional, easy to read.",
+    "rationale": "Personal finance can be stressful. The organic theme brings warmth and ease. We avoid stereotypical Islamic geometric motifs and instead rely on an earthy, modest color palette (sage, forest, clay, bone-white) which carries a subtle, modern cultural resonance while remaining clean and highly functional."
+  },
+  "typography": {
+    "headings": {
+      "font_family": "Manrope, sans-serif",
+      "weight": "font-bold to font-extrabold",
+      "tracking": "tracking-tight",
+      "usage": "Use for Ustadz/Ustadzah greeting, balance numbers, and primary screen titles."
+    },
+    "body": {
+      "font_family": "Figtree, sans-serif",
+      "weight": "font-normal to font-medium",
+      "tracking": "tracking-normal",
+      "usage": "Use for transaction items, form labels, and standard text."
+    },
+    "hierarchy": {
+      "h1": "text-3xl sm:text-4xl",
+      "h2": "text-2xl sm:text-3xl",
+      "h3": "text-xl",
+      "body": "text-base",
+      "small": "text-sm text-muted-foreground"
+    }
+  },
+  "color_palette": {
+    "background": "#FAF9F6",
+    "surface": "#FFFFFF",
+    "primary": "#4A6B53",
+    "primary_foreground": "#FFFFFF",
+    "secondary": "#E8EBE6",
+    "secondary_foreground": "#2C3E30",
+    "expense_terracotta": "#C87A63",
+    "income_sage": "#789B7A",
+    "warning_banner": "#F4EBD0",
+    "warning_text": "#5C4A1A",
+    "text_main": "#1A241B",
+    "text_muted": "#687669",
+    "border": "#E2E4DF"
+  },
+  "spacing_and_layout": {
+    "mobile_container": "max-w-md mx-auto min-h-screen bg-background relative overflow-hidden shadow-2xl",
+    "padding": "Generous. Use p-6 or p-8 for main sections. Ensure touch targets are large (min-h-[48px]).",
+    "cards": {
+      "radius": "rounded-3xl",
+      "surface_style": "Flat Solid surfaces. White background, 1px subtle border (#E2E4DF), and a very soft ambient shadow (shadow-sm). DO NOT use glassmorphism for finance data."
+    },
+    "alignment": "Left-align dense text and transaction items. The main balance card can have centered numbers for focus."
+  },
+  "components": {
+    "onboarding": {
+      "layout": "Full screen soft organic gradient background, welcoming text at the bottom, Emergent Auth (Google Login) button.",
+      "auth_button": "White background, primary text color, pill shape (rounded-full), subtle shadow, leading Google icon."
+    },
+    "dashboard_header": {
+      "style": "Clean white top header or transparent blending into background. Greeting 'Assalamu'alaikum, Ustadz/Ustadzah [Name]'. Profile avatar on top right."
+    },
+    "balance_card": {
+      "style": "Dark background (Primary #4A6B53) with white text. Sleek rounded-3xl. Must contain 'Saldo Bulan Ini', total amount in large font, and clear visual hierarchy."
+    },
+    "reminder_banner": {
+      "style": "Soft warm background (#F4EBD0), gentle text (#5C4A1A), rounded-2xl, icon (e.g., Bell or Sun), p-4 mb-6."
+    },
+    "transaction_list": {
+      "style": "Clean list without separating borders (use whitespace instead). Each item has an icon container (rounded-full, bg-secondary), title, date, and amount (Green for Pemasukan, Terracotta for Pengeluaran)."
+    },
+    "floating_action_button": {
+      "style": "A prominent FAB or two large primary buttons on the dashboard (+ Tambah Pemasukan, + Tambah Pengeluaran). Primary color for Income, Terracotta for Expense."
+    },
+    "bottom_navigation": {
+      "style": "Fixed bottom bar, bg-white, border-t border-border/40, containing Home, Riwayat, Laporan, Profil."
+    }
+  },
+  "interactive_states_and_motion": {
+    "hover_active": "Focus on `:active` states for mobile. Buttons should scale down slightly (active:scale-95) and decrease opacity.",
+    "transitions": "Use transition-all duration-200 ease-out for all button presses."
+  },
+  "media_and_icons": {
+    "icon_library": "lucide-react",
+    "images": [
+      {
+        "category": "onboarding_background",
+        "url": "https://images.pexels.com/photos/8357144/pexels-photo-8357144.jpeg",
+        "description": "Soothing abstract gradient of green tones, perfect for minimalist welcoming background on the login screen."
+      },
+      {
+        "category": "profile_avatar_placeholder",
+        "url": "https://images.unsplash.com/photo-1472157510410-64a053cbc39f",
+        "description": "Clean desk plant - used strictly if an organic placeholder avatar is needed."
+      }
+    ],
+    "category_icons": {
+      "pemasukan": ["Honor/Gaji Pondok: Wallet", "Infaq Diterima: HeartHandshake", "Pendapatan Lain: PlusCircle"],
+      "pengeluaran": ["Konsumsi: Coffee/Utensils", "Transportasi: Car/Bus", "Kebutuhan Pribadi: ShoppingBag", "Infaq: Heart", "Pendidikan/Buku: BookOpen", "Kesehatan: Activity/Pill", "Lain-lain: MoreHorizontal"]
+    }
+  },
+  "accessibility_and_testing": {
+    "contrast": "Ensure text meets WCAG AA standards. Main text uses #1A241B for high contrast.",
+    "testing_attributes": "CRITICAL: All interactive elements (buttons, inputs, list items, tabs) MUST include a kebab-case 'data-testid' attribute (e.g., 'data-testid=\"btn-tambah-pemasukan\"')."
+  },
+  "instructions_to_main_agent": [
+    "Design mobile-first. Since we use Tailwind/React, strictly wrap the main layout in 'max-w-md mx-auto min-h-screen relative shadow-2xl overflow-hidden' to simulate a mobile app container.",
+    "Format all currencies in Rupiah strictly as 'Rp 1.250.000'.",
+    "Do NOT use pure #000000 or generic blue SaaS colors. Stick strictly to the Organic & Earthy palette defined.",
+    "Form inputs (Tambah Transaksi) should use large touch targets (min-h-[48px]) and Shadcn/UI styled components with custom rounded-xl or rounded-2xl radii.",
+    "Include standard Shadcn Form, Select, DatePicker components but strip Vercel-look borders in favor of the softer earthy palette.",
+    "Ensure the Gelar selection (Ustadz vs Ustadzah) alters the dashboard greeting dynamically.",
+    "Use Recharts or Shadcn Charts for the Dashboard Donut chart and Laporan Bar chart, utilizing the primary green and terracotta colors."
+  ]
+}
