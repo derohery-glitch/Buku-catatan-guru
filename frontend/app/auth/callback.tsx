@@ -15,9 +15,10 @@ type User = {
   reminder_hour: number;
 };
 
+type SessionResp = { user: User; token: string };
+
 function extractSessionId(url: string): string | null {
   if (!url) return null;
-  // emergent puts session_id in URL fragment
   const hashIdx = url.indexOf("#");
   if (hashIdx >= 0) {
     const hash = url.slice(hashIdx + 1);
@@ -50,27 +51,14 @@ export default function AuthCallback() {
         setDebugUrl(url);
         const sid = extractSessionId(url);
         if (!sid) {
-          throw new Error("session_id tidak ditemukan di URL callback");
+          throw new Error("session_id tidak ditemukan di URL");
         }
-        // Exchange Emergent session_id → session_token
-        const resp = await fetch(
-          "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
-          { headers: { "X-Session-ID": sid } },
-        );
-        if (!resp.ok) {
-          throw new Error(`Emergent session-data: HTTP ${resp.status}`);
-        }
-        const data = (await resp.json()) as { session_token: string };
-        if (!data.session_token) {
-          throw new Error("Respon Emergent tidak berisi session_token");
-        }
-
-        // Register session with our backend
-        const user = await api<User>("/auth/session", {
+        // Server-side exchange (avoids CORS to demobackend.emergentagent.com)
+        const resp = await api<SessionResp>("/auth/session", {
           method: "POST",
-          body: { session_token: data.session_token },
+          body: { session_id: sid },
         });
-        await setToken(data.session_token);
+        await setToken(resp.token);
         await refreshUser();
 
         // Clean URL
@@ -78,8 +66,7 @@ export default function AuthCallback() {
           window.history.replaceState(null, "", "/");
         }
 
-        // Navigate
-        if (user.gelar) {
+        if (resp.user.gelar) {
           router.replace("/(tabs)");
         } else {
           router.replace("/gelar");

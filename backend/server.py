@@ -69,7 +69,11 @@ class UserOut(BaseModel):
     reminder_hour: int = 20
 
 class SessionRequest(BaseModel):
-    session_token: str
+    session_id: str
+
+class SessionResponse(BaseModel):
+    user: UserOut
+    token: str
 
 class GelarRequest(BaseModel):
     gelar: Literal["Ustadz", "Ustadzah"]
@@ -162,13 +166,13 @@ async def seed_default_categories(user_id: str):
 # ============================================================
 # Auth Routes
 # ============================================================
-@api.post("/auth/session", response_model=UserOut)
+@api.post("/auth/session", response_model=SessionResponse)
 async def auth_session(payload: SessionRequest):
-    """Exchange Emergent session_token, upsert user, create session."""
+    """Exchange Emergent one-time session_id for a session_token, upsert user, create session row, return token."""
     async with httpx.AsyncClient(timeout=15.0) as http:
         resp = await http.get(
             EMERGENT_SESSION_URL,
-            headers={"X-Session-ID": payload.session_token},
+            headers={"X-Session-ID": payload.session_id},
         )
         if resp.status_code != 200:
             raise HTTPException(status_code=401, detail="Session tidak valid")
@@ -202,29 +206,20 @@ async def auth_session(payload: SessionRequest):
         await db.users.insert_one(user.copy())
         await seed_default_categories(user_id)
 
-    # Session row
-    await db.user_sessions.insert_one({
-        "session_token": session_token,
-        "user_id": user_id,
-        "created_at": datetime.now(timezone.utc),
-        "expires_at": datetime.now(timezone.utc) + timedelta(days=SESSION_TTL_DAYS),
-    })
-    return user_public(user)
-
-
-@api.post("/auth/session-token", response_model=UserOut)
-async def get_user_by_session_token(payload: SessionRequest):
-    """Look up user by an already-issued session_token (used right after /session).
-
-    Frontend keeps the token returned by Emergent and now needs to bootstrap state.
-    """
-    session = await db.user_sessions.find_one({"session_token": payload.session_token}, {"_id": 0})
-    if not session:
-        raise HTTPException(status_code=401, detail="Sesi tidak ditemukan")
-    user = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0})
-    if not user:
-        raise HTTPException(status_code=401, detail="Pengguna tidak ditemukan")
-    return user_public(user)
+    # Upsert session row (idempotent on token)
+    await db.user_sessions.update_one(
+        {"session_token": session_token},
+        {
+            "$set": {
+                "session_token": session_token,
+                "user_id": user_id,
+                "created_at": datetime.now(timezone.utc),
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=SESSION_TTL_DAYS),
+            }
+        },
+        upsert=True,
+    )
+    return SessionResponse(user=user_public(user), token=session_token)
 
 
 @api.get("/auth/me", response_model=UserOut)

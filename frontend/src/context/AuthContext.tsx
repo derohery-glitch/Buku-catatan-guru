@@ -45,19 +45,13 @@ function getRedirectUrl(): string {
 }
 
 async function exchangeSession(sessionId: string): Promise<string> {
-  const resp = await fetch(
-    "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
-    { headers: { "X-Session-ID": sessionId } },
-  );
-  if (!resp.ok) throw new Error("Gagal verifikasi session");
-  const data = (await resp.json()) as { session_token: string };
-  // Tell backend to create our user/session row
-  await api<User>("/auth/session", {
+  // Send session_id to OUR backend; backend calls Emergent server-side (avoids CORS).
+  const resp = await api<{ user: User; token: string }>("/auth/session", {
     method: "POST",
-    body: { session_token: data.session_token },
+    body: { session_id: sessionId },
   });
-  await setToken(data.session_token);
-  return data.session_token;
+  await setToken(resp.token);
+  return resp.token;
 }
 
 function extractSessionId(url: string): string | null {
