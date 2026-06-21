@@ -705,7 +705,8 @@ async def voice_parse(payload: VoiceParseIn, authorization: Optional[str] = Head
 
     try:
         stt = OpenAISpeechToText(api_key=EMERGENT_LLM_KEY)
-        result = await stt.transcribe(file=Path(tmp_path), model="whisper-1", language="id", response_format="json")
+        with open(tmp_path, "rb") as audio_file:
+            result = await stt.transcribe(file=audio_file, model="whisper-1", language="id", response_format="json")
         transcription = result.text if hasattr(result, "text") else (result.get("text") if isinstance(result, dict) else str(result))
         transcription = (transcription or "").strip()
     except Exception as e:
