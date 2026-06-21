@@ -37,11 +37,11 @@ const AuthContext = createContext<AuthState | null>(null);
 function getRedirectUrl(): string {
   if (Platform.OS === "web") {
     if (typeof window !== "undefined") {
-      return window.location.origin + "/";
+      return window.location.origin + "/auth/callback";
     }
-    return "/";
+    return "/auth/callback";
   }
-  return Linking.createURL("auth");
+  return Linking.createURL("auth/callback");
 }
 
 async function exchangeSession(sessionId: string): Promise<string> {
