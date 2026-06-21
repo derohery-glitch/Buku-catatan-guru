@@ -74,12 +74,7 @@ def _seed_user(db, user_id, email, name, gelar, token):
 
 @pytest.fixture(scope="session", autouse=True)
 def seed_db():
-    client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=2000)
-    try:
-        client.admin.command('ping')
-    except Exception as e:
-        pytest.skip(f"MongoDB not available at {MONGO_URL}: {e}")
-
+    client = MongoClient(MONGO_URL)
     db = client[DB_NAME]
     # Clean any previous test transactions for both users
     db.transactions.delete_many({"user_id": {"$in": [USER_A_ID, USER_B_ID]}})
