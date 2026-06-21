@@ -38,6 +38,17 @@ type RangeReport = {
   biggest_expense_category: string | null;
 };
 
+type Comparison = {
+  current: { year: number; month: number; total_income: number; total_expense: number; balance: number };
+  previous: { year: number; month: number; total_income: number; total_expense: number; balance: number };
+  delta: {
+    income: number; income_pct: number | null;
+    expense: number; expense_pct: number | null;
+    balance: number;
+  };
+  categories: { category: string; current: number; previous: number; delta: number; delta_pct: number | null }[];
+};
+
 function defaultRange() {
   const now = new Date();
   const to = { year: now.getFullYear(), month: now.getMonth() + 1 };
@@ -174,6 +185,49 @@ export default function ReportsScreen() {
               </View>
             ) : null}
 
+            {comparison ? (
+              <View style={styles.section} testID="comparison-section">
+                <Text style={styles.sectionTitle}>
+                  Perbandingan: {monthName(comparison.current.month)} vs {monthName(comparison.previous.month)}
+                </Text>
+                <View style={styles.compRow}>
+                  <CompareCard
+                    label="Pemasukan"
+                    delta={comparison.delta.income}
+                    pct={comparison.delta.income_pct}
+                    positiveGood
+                  />
+                  <CompareCard
+                    label="Pengeluaran"
+                    delta={comparison.delta.expense}
+                    pct={comparison.delta.expense_pct}
+                    positiveGood={false}
+                  />
+                </View>
+                {comparison.categories.length > 0 ? (
+                  <>
+                    <Text style={styles.compSubTitle}>Pergerakan terbesar per kategori</Text>
+                    {comparison.categories.slice(0, 5).map((c) => {
+                      const up = c.delta > 0;
+                      const flat = c.delta === 0;
+                      const arrow = flat ? "remove" : up ? "trending-up" : "trending-down";
+                      const color = flat ? COLORS.textMuted : up ? COLORS.expense : COLORS.income;
+                      return (
+                        <View key={c.category} style={styles.compCatRow}>
+                          <Ionicons name={arrow as any} size={16} color={color} />
+                          <Text style={styles.compCatName} numberOfLines={1}>{c.category}</Text>
+                          <Text style={[styles.compCatDelta, { color }]}>
+                            {up ? "+" : ""}{formatRupiah(c.delta)}
+                            {c.delta_pct !== null ? `  (${up ? "+" : ""}${c.delta_pct}%)` : ""}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </>
+                ) : null}
+              </View>
+            ) : null}
+
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Pemasukan vs Pengeluaran</Text>
               <BarChart data={barData} />
@@ -252,6 +306,37 @@ function StatCard({ label, value, color, wide }: { label: string; value: string;
   );
 }
 
+function CompareCard({
+  label,
+  delta,
+  pct,
+  positiveGood,
+}: {
+  label: string;
+  delta: number;
+  pct: number | null;
+  positiveGood: boolean;
+}) {
+  const up = delta > 0;
+  const flat = delta === 0;
+  const good = flat ? null : positiveGood ? up : !up;
+  const color = flat ? COLORS.textMuted : good ? COLORS.income : COLORS.expense;
+  const sign = up ? "+" : "";
+  return (
+    <View style={styles.compCard}>
+      <Text style={styles.compLabel}>{label}</Text>
+      <Text style={[styles.compValue, { color }]} numberOfLines={1}>
+        {sign}{formatRupiah(delta)}
+      </Text>
+      {pct !== null ? (
+        <Text style={[styles.compPct, { color }]}>{sign}{pct}% dari bulan lalu</Text>
+      ) : (
+        <Text style={styles.compPct}>—</Text>
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   header: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md },
@@ -294,4 +379,20 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8,
   },
   exportBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  compRow: { flexDirection: "row", gap: 10 },
+  compCard: {
+    flex: 1, backgroundColor: COLORS.background,
+    borderRadius: RADII.lg, padding: 12,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  compLabel: { color: COLORS.textMuted, fontSize: 11, fontWeight: "600" },
+  compValue: { fontSize: 16, fontWeight: "800", marginTop: 4 },
+  compPct: { fontSize: 11, marginTop: 4, color: COLORS.textMuted, fontWeight: "600" },
+  compSubTitle: { color: COLORS.textMain, fontWeight: "700", fontSize: 13, marginTop: SPACING.md, marginBottom: 6 },
+  compCatRow: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: COLORS.border,
+  },
+  compCatName: { color: COLORS.textMain, flex: 1, fontSize: 13 },
+  compCatDelta: { fontSize: 12, fontWeight: "700" },
 });

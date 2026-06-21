@@ -525,6 +525,93 @@ async def report_range(
     }
 
 
+@api.get("/reports/comparison")
+async def report_comparison(
+    authorization: Optional[str] = Header(None),
+    year: Optional[int] = None,
+    month: Optional[int] = None,
+):
+    """Bandingkan bulan yang dipilih (default: bulan berjalan) dengan bulan sebelumnya."""
+    user = await get_current_user(authorization)
+    now = datetime.now(timezone.utc)
+    cur_y = year or now.year
+    cur_m = month or now.month
+    prev_y, prev_m = (cur_y, cur_m - 1) if cur_m > 1 else (cur_y - 1, 12)
+
+    cur = await _aggregate_for_month(user["user_id"], cur_y, cur_m)
+    prev = await _aggregate_for_month(user["user_id"], prev_y, prev_m)
+
+    def pct(a: float, b: float) -> Optional[float]:
+        if b <= 0:
+            return None
+        return round(((a - b) / b) * 100.0, 1)
+
+    cur_cats = {c["category"]: c["amount"] for c in cur["expense_by_category"]}
+    prev_cats = {c["category"]: c["amount"] for c in prev["expense_by_category"]}
+    all_cats = sorted(set(list(cur_cats.keys()) + list(prev_cats.keys())))
+    categories = []
+    for name in all_cats:
+        c = cur_cats.get(name, 0.0)
+        p = prev_cats.get(name, 0.0)
+        categories.append({
+            "category": name,
+            "current": c,
+            "previous": p,
+            "delta": c - p,
+            "delta_pct": pct(c, p),
+        })
+    # sort by absolute delta desc (biggest movers first)
+    categories.sort(key=lambda x: abs(x["delta"]), reverse=True)
+
+    return {
+        "current": {"year": cur_y, "month": cur_m, **{k: cur[k] for k in ("total_income", "total_expense", "balance")}},
+        "previous": {"year": prev_y, "month": prev_m, **{k: prev[k] for k in ("total_income", "total_expense", "balance")}},
+        "delta": {
+            "income": cur["total_income"] - prev["total_income"],
+            "income_pct": pct(cur["total_income"], prev["total_income"]),
+            "expense": cur["total_expense"] - prev["total_expense"],
+            "expense_pct": pct(cur["total_expense"], prev["total_expense"]),
+            "balance": cur["balance"] - prev["balance"],
+        },
+        "categories": categories,
+    }
+
+
+@api.get("/reports/export/json")
+async def export_json(authorization: Optional[str] = Header(None)):
+    """Backup semua data user dalam JSON."""
+    user = await get_current_user(authorization)
+    txs = await db.transactions.find({"user_id": user["user_id"]}, {"_id": 0, "user_id": 0, "voice_note_base64": 0}).to_list(20000)
+    cats = await db.categories.find({"user_id": user["user_id"]}, {"_id": 0, "user_id": 0}).to_list(500)
+    payload = {
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "user": {
+            "name": user["name"],
+            "gelar": user.get("gelar"),
+            "email": user["email"],
+        },
+        "categories": cats,
+        "transactions": [
+            {
+                "id": t["id"],
+                "type": t["type"],
+                "amount": t["amount"],
+                "category": t["category"],
+                "date": t["date"],
+                "note": t.get("note", ""),
+            }
+            for t in txs
+        ],
+    }
+    body = json.dumps(payload, ensure_ascii=False, indent=2, default=str)
+    fname = f"backup_asatidz_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.json"
+    return StreamingResponse(
+        io.BytesIO(body.encode("utf-8")),
+        media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename={fname}"},
+    )
+
+
 @api.get("/reminder/status")
 async def reminder_status(authorization: Optional[str] = Header(None)):
     user = await get_current_user(authorization)

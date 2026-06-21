@@ -1,0 +1,37 @@
+{
+  "summary": "Iteration 2 backend tests PASSED 18/18 against public EXPO_PUBLIC_BACKEND_URL. Focused on the two new endpoints (GET /api/reports/comparison and GET /api/reports/export/json) plus custom-category-icon round-trip, with a quick regression sanity pass on /auth/me, transactions CRUD, /reports/summary, and /reports/export/excel|pdf. Comparison endpoint math verified deterministically by seeding Jan-2025 (prev) + Feb-2025 (cur) tx for User A: income/expense/balance, delta and delta_pct all correct; categories array sorted desc by abs(delta); 0-prev case returns delta_pct=null for both delta.income_pct/delta.expense_pct and per-category delta_pct (verified with 2019-03 vs empty 2019-02). Cross-year previous month resolution validated (year=2026 month=1 -> prev=2025-12). Default invocation (no params) returns current month vs prior month. JSON backup export returns content-type application/json with attachment Content-Disposition, valid JSON shape {exported_at, user, categories, transactions}, transactions match what was inserted, no user_id or voice_note_base64 leakage, and User B's export does not contain User A's tx (data isolation enforced). POST /api/categories with icon='smartphone' persists and is returned by GET /api/categories; omitted icon defaults to 'tag'. Both new endpoints correctly reject missing or bogus Bearer with 401.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/reports/comparison", "issue": "pct() uses b<=0 to short-circuit, which also returns null when b is negative (rare but possible for balance comparisons — though only income/expense pcts use it, which can never be negative, so functionally safe)."},
+      {"endpoint": "GET /api/reports/export/json", "issue": "exported_at is naive .isoformat() via datetime.now(timezone.utc); fine, but consumer code parsing must tolerate '+00:00' (handled in test by replace Z)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_2.py",
+    "/app/backend/tests/conftest.py",
+    "/app/test_reports/pytest/iteration_2.xml"
+  ],
+  "action_items": [
+    "No backend fixes required. New endpoints behave per spec."
+  ],
+  "critical_code_review_comments": [
+    "server.py still 950+ lines; iteration 1 recommendation to split into routers still stands.",
+    "@app.on_event('startup'/'shutdown') is deprecated in FastAPI; migrate to lifespan handler (carried over from iteration 1).",
+    "Comparison endpoint uses two sequential _aggregate_for_month calls — fine for current month sizes but could be parallelised with asyncio.gather for very large datasets."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_2.py (new)"
+  ],
+  "success_rate": {"backend": "100% (18/18)", "frontend": "not tested (per request scope)"},
+  "seed_data_creation": "Reused session-scoped seed from conftest.py (User A user_test_asatidz / token test_token_asatidz_v1 and User B user_test_asatidzah / token test_token_asatidzah_v1, each with 10 default categories). Test transactions are created inside tests using POST /api/transactions and deleted in fixture teardown, so the DB stays clean for the next iteration.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Both seeded users still available. Use EXPO_PUBLIC_BACKEND_URL from frontend/.env as the base. iter2 test file is a good template for future endpoint additions — create transactions via POST then assert via the new endpoint, and always assert delta_pct null path when prev=0."
+}

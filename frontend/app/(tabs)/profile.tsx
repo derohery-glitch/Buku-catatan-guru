@@ -1,17 +1,20 @@
 import { useState } from "react";
 import {
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/src/context/AuthContext";
+import { api, API_BASE, getToken } from "@/src/lib/api";
 import { COLORS, RADII, SPACING } from "@/src/lib/theme";
 
 export default function ProfileScreen() {
@@ -34,6 +37,41 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     await signOut();
     router.replace("/login");
+  };
+
+  const handleBackup = async () => {
+    try {
+      const token = await getToken();
+      const url = `${API_BASE}/reports/export/json`;
+      if (Platform.OS === "web") {
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) throw new Error("failed");
+        const blob = await res.blob();
+        const fileUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = fileUrl;
+        a.download = `backup_asatidz.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(fileUrl);
+      } else {
+        const FileSystem = await import("expo-file-system");
+        const Sharing = await import("expo-sharing");
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) throw new Error("failed");
+        const text = await res.text();
+        const fileUri = `${FileSystem.documentDirectory}backup_asatidz.json`;
+        await FileSystem.writeAsStringAsync(fileUri, text, { encoding: FileSystem.EncodingType.UTF8 });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri);
+        } else {
+          await Linking.openURL(fileUri);
+        }
+      }
+    } catch (e) {
+      console.warn("backup error", e);
+    }
   };
 
   return (
@@ -90,6 +128,29 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        <Text style={styles.sectionTitle}>Data</Text>
+        <View style={styles.card}>
+          <Pressable
+            style={styles.itemRow}
+            onPress={() => router.push("/categories")}
+            testID="btn-manage-categories"
+          >
+            <Ionicons name="pricetags-outline" size={20} color={COLORS.primary} />
+            <Text style={styles.itemText}>Kelola Kategori</Text>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+          </Pressable>
+          <View style={styles.itemDivider} />
+          <Pressable
+            style={styles.itemRow}
+            onPress={handleBackup}
+            testID="btn-backup-json"
+          >
+            <Ionicons name="cloud-download-outline" size={20} color={COLORS.primary} />
+            <Text style={styles.itemText}>Backup Data (JSON)</Text>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+          </Pressable>
+        </View>
+
         <Text style={styles.sectionTitle}>Akun</Text>
         <View style={styles.card}>
           <Pressable
@@ -137,7 +198,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondary, alignItems: "center", justifyContent: "center",
   },
   hourText: { fontSize: 16, fontWeight: "800", color: COLORS.textMain, minWidth: 64, textAlign: "center" },
-  itemRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8 },
-  itemText: { fontSize: 15, fontWeight: "700" },
+  itemRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
+  itemDivider: { height: 1, backgroundColor: COLORS.border, marginVertical: 2 },
+  itemText: { fontSize: 15, fontWeight: "700", flex: 1, color: COLORS.textMain },
   footer: { textAlign: "center", color: COLORS.textMuted, fontSize: 12, marginTop: SPACING.lg },
 });
